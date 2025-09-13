@@ -15,7 +15,7 @@ jobs:
     runs-on: self-hosted # 도커 API가 같은 머신에서 localhost:3000 으로 열려 있어야 함
     env:
       # ✅ 공통 기본값(Secrets 미설정 시 fallback)
-      TARGET_2WEEKS: "20"
+      TARGET_2WEEKS: "10"
       TZ: Asia/Seoul
       DEDUPE_MODE: WINDOW_UNIQUE # DAILY_UNIQUE | WINDOW_UNIQUE | ALL_SUBMISSIONS
     steps:

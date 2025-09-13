@@ -1,10 +1,9 @@
-name: Biweekly LeetCode Report (Bun, multi-user)
+name: Biweekly LeetCode Report (Bun, multi-user, daily+gate)
 
 on:
   schedule:
-    # ⏰ 매 2주마다 KST(UTC+9) 오전 10시에 실행
-    # → UTC 01:00으로 맞춤
-    - cron: "0 1 */14 * *"
+    # 매일 KST 10:00 실행 (UTC 01:00)
+    - cron: "0 1 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -12,9 +11,9 @@ permissions:
 
 jobs:
   report:
-    runs-on: self-hosted # 도커 API가 같은 머신에서 localhost:3000 으로 열려 있어야 함
+    runs-on: self-hosted # 같은 머신에서 http://localhost:3000 접근 가능
     env:
-      # ✅ 공통 기본값(Secrets 미설정 시 fallback)
+      # 공개 기본값(Secrets 없을 때 fallback)
       TARGET_2WEEKS: "10"
       TZ: Asia/Seoul
       DEDUPE_MODE: WINDOW_UNIQUE # DAILY_UNIQUE | WINDOW_UNIQUE | ALL_SUBMISSIONS
@@ -27,22 +26,27 @@ jobs:
         with:
           bun-version: "1.1.29"
 
-      # (의존성 없으면 install 스텝 생략 가능)
-      # - name: Install deps
-      #   run: bun install
+      # --- ① 게이트: 14일 지났는지 확인 ---
+      - name: Biweekly gate (14-day check)
+        id: gate
+        run: bun scripts/biweekly_gate.mjs
 
+      # --- ② 리포트 실행 (게이트 통과시에만) ---
       - name: Run biweekly report
+        if: steps.gate.outputs.should_run == 'true'
         env:
-          # 🔐 필수 Secrets
+          # 🔐 Repository Secrets 권장
           API_BASE: ${{ secrets.API_BASE }} # 예: http://localhost:3000
-          USERS: ${{ secrets.USERS }} # 예: moo,ryu  (콤마 구분)
+          USERS: ${{ secrets.USERS }} # 예: moo,ryu (콤마)
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TARGET_2WEEKS: ${{ env.TARGET_2WEEKS }}
           TZ: ${{ env.TZ }}
           DEDUPE_MODE: ${{ env.DEDUPE_MODE }}
         run: bun scripts/run-biweekly.ts
 
+      # --- ③ 커밋 (게이트 통과시에만) ---
       - name: Commit & push report
+        if: steps.gate.outputs.should_run == 'true'
         run: |
           git config user.name "gh-bot"
           git config user.email "actions@users.noreply.github.com"

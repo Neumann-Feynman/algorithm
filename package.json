@@ -1,8 +1,9 @@
 {
   "name": "algorithm",
-  "module": "index.ts",
   "type": "module",
-  "private": true,
+  "scripts": {
+    "report": "bun scripts/run-biweekly.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

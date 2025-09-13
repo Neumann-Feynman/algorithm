@@ -2,9 +2,9 @@ name: Biweekly LeetCode Report (Bun, multi-user)
 
 on:
   schedule:
-    # ⏰ 매 2주마다 KST(UTC+9) 자정에 가깝게 실행하려면:
-    # 자정 KST ~= 15:00 UTC 전날 → 2주 간격: */14 사용
-    - cron: "0 15 */14 * *"
+    # ⏰ 매 2주마다 KST(UTC+9) 오전 10시에 실행
+    # → UTC 01:00으로 맞춤
+    - cron: "0 1 */14 * *"
   workflow_dispatch: {}
 
 permissions:

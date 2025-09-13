@@ -130,6 +130,7 @@ export async function runBiweeklyReport() {
   for (const r of reports) {
     md.push(`## ${r.user}`);
     md.push(`- Total: **${r.total}/${TARGET_2WEEKS} (${r.pct}%)**`);
+    md.push("");
     md.push(renderDailyTable(r.days));
     md.push("");
     md.push("### Sparkline");

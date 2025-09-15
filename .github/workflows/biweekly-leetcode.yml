@@ -2,8 +2,8 @@ name: Biweekly LeetCode Report (Bun, multi-user, daily+gate)
 
 on:
   schedule:
-    # 매일 KST 10:00 실행 (UTC 01:00)
-    - cron: "0 1 * * *"
+    # 매주 월요일 KST 10:00 실행 (UTC 01:00)
+    - cron: "0 1 * * 1"
   workflow_dispatch: {}
 
 permissions:

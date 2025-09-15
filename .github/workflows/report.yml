@@ -1,4 +1,4 @@
-name: Biweekly LeetCode Report (Bun, multi-user, daily+gate)
+name: LeetCode Report (Bun, multi-user, gated)
 
 on:
   schedule:
@@ -14,7 +14,8 @@ jobs:
     runs-on: self-hosted # 같은 머신에서 http://localhost:3000 접근 가능
     env:
       # 공개 기본값(Secrets 없을 때 fallback)
-      TARGET_2WEEKS: "10"
+      TARGET_FOR_PERIOD: "7"
+      PERIOD_DAYS: "7"
       TZ: Asia/Seoul
       DEDUPE_MODE: WINDOW_UNIQUE # DAILY_UNIQUE | WINDOW_UNIQUE | ALL_SUBMISSIONS
     steps:
@@ -26,23 +27,24 @@ jobs:
         with:
           bun-version: "1.1.29"
 
-      # --- ① 게이트: 14일 지났는지 확인 ---
-      - name: Biweekly gate (14-day check)
+      # --- ① 게이트: 설정된 주기(주 단위) 지났는지 확인 ---
+      - name: Report gate (period check)
         id: gate
-        run: bun scripts/biweekly_gate.mjs
+        run: bun scripts/report_gate.mjs
 
       # --- ② 리포트 실행 (게이트 통과시에만) ---
-      - name: Run biweekly report
+      - name: Run report
         if: steps.gate.outputs.should_run == 'true'
         env:
           # 🔐 Repository Secrets 권장
           API_BASE: ${{ secrets.API_BASE }} # 예: http://localhost:3000
           USERS: ${{ secrets.USERS }} # 예: moo,ryu (콤마)
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          TARGET_2WEEKS: ${{ env.TARGET_2WEEKS }}
+          TARGET_FOR_PERIOD: ${{ env.TARGET_FOR_PERIOD }}
+          PERIOD_DAYS: ${{ env.PERIOD_DAYS }}
           TZ: ${{ env.TZ }}
           DEDUPE_MODE: ${{ env.DEDUPE_MODE }}
-        run: bun scripts/run-biweekly.ts
+        run: bun scripts/run-report.ts
 
       # --- ③ 커밋 (게이트 통과시에만) ---
       - name: Commit & push report
@@ -51,5 +53,5 @@ jobs:
           git config user.name "gh-bot"
           git config user.email "actions@users.noreply.github.com"
           git add reports/
-          git commit -m "chore(report): biweekly" || echo "No changes"
+          git commit -m "chore(report): period" || echo "No changes"
           git push

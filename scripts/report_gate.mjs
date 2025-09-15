@@ -3,14 +3,15 @@ import fs from "node:fs/promises";
 const MARK_PATH = "reports/.last-run";
 const now = Date.now();
 let shouldRun = true;
+const periodDays = Number(process.env.PERIOD_DAYS ?? 7);
+const windowSec = Math.max(1, periodDays) * 24 * 60 * 60;
 
 try {
   const buf = await fs.readFile(MARK_PATH, "utf8");
   const last = new Date(buf.trim()).getTime();
   if (Number.isFinite(last)) {
     const diffSec = Math.floor((now - last) / 1000);
-    const FOURTEEN_DAYS = 14 * 24 * 60 * 60; // 1209600
-    if (diffSec < FOURTEEN_DAYS) shouldRun = false;
+    if (diffSec < windowSec) shouldRun = false;
     console.log(`last-run: ${new Date(last).toISOString()}, diff: ${diffSec}s, shouldRun=${shouldRun}`);
   }
 } catch {

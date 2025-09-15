@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import { fetchRecentAccepted } from "../api/leetcode";
-import { DISCORD_WEBHOOK_URL, TARGET_2WEEKS, TIMEZONE, USERS, DEDUPE_MODE } from "../config/env";
-import { kstRangeLast14Days, toKstDateString } from "../utils/date";
+import { DISCORD_WEBHOOK_URL, TARGET_FOR_PERIOD, TIMEZONE, USERS, DEDUPE_MODE, PERIOD_DAYS } from "../config/env";
+import { kstRangeLastNDays, toKstDateString } from "../utils/date";
 import { renderBar, renderDailyTable } from "../utils/markdown";
 
 type Daily = { date: string; count: number };
@@ -9,32 +9,20 @@ type UserReport = { user: string; days: Daily[]; total: number; pct: number };
 
 const inRange = (tsSec: number, startTs: number, endTs: number) => tsSec >= startTs && tsSec <= endTs;
 
-/**
- * @description Summarize the days
- * @param days
- * @returns
- */
 function summarize(days: Daily[]) {
-  const total = days.reduce((s, d) => s + d.count, 0);
-  const pct = Math.round((total / TARGET_2WEEKS) * 100);
+  const total = days.reduce((sum, day) => sum + day.count, 0);
+  const pct = Math.round((total / TARGET_FOR_PERIOD) * 100);
   return { total, pct };
 }
 
-/**
- * @description Build the user report
- * @param user
- * @param startTs
- * @param endTs
- * @returns
- */
 async function buildUserReport(user: string, startTs: number, endTs: number): Promise<UserReport> {
+  const periodDays = Math.max(1, PERIOD_DAYS);
   const data = await fetchRecentAccepted(20, user);
 
-  // 14일 초기화
   const perDay = new Map<string, number>();
-  const { startKst } = kstRangeLast14Days(TIMEZONE);
+  const { startKst } = kstRangeLastNDays(periodDays, TIMEZONE);
   const cur = new Date(startKst);
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < periodDays; i++) {
     const key = cur.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
     perDay.set(key, 0);
     cur.setDate(cur.getDate() + 1);
@@ -77,45 +65,36 @@ async function buildUserReport(user: string, startTs: number, endTs: number): Pr
     }
   }
 
-  // days 배열
   const days: Daily[] = Array.from(perDay, ([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
   const { total, pct } = summarize(days);
   return { user, days, total, pct };
 }
 
-/**
- * @description Run the biweekly report
- * @returns
- */
-export async function runBiweeklyReport() {
+export async function runReport() {
   if (USERS.length === 0) throw new Error("No USERS configured (USERS=moo,ryu)");
-
-  const { startKst, endKst } = kstRangeLast14Days(TIMEZONE);
+  const periodDays = Math.max(1, PERIOD_DAYS);
+  const { startKst, endKst } = kstRangeLastNDays(periodDays, TIMEZONE);
   const startTs = Math.floor(startKst.getTime() / 1000);
   const endTs = Math.floor(endKst.getTime() / 1000);
   const rangeStartStr = startKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
   const rangeEndStr = endKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
 
-  // 사용자별 리포트 병렬 수집
   const reports = await Promise.all(USERS.map((u) => buildUserReport(u, startTs, endTs)));
-
-  // 랭킹
   const ranked = [...reports].sort((a, b) => b.total - a.total);
 
   const teamTotal = reports.reduce((sum, r) => sum + r.total, 0);
-  const teamTarget = USERS.length * TARGET_2WEEKS;
+  const teamTarget = USERS.length * TARGET_FOR_PERIOD;
   const teamPct = Math.round((teamTotal / teamTarget) * 100);
 
   const todayStr = endKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
   const reportPath = `reports/${todayStr}.md`;
 
-  // Markdown
   const md: string[] = [];
-  md.push(`# Biweekly LeetCode Report (${todayStr} KST)`);
+  md.push(`# LeetCode Report — ${PERIOD_DAYS} day${PERIOD_DAYS === 1 ? "" : "s"} (${todayStr} KST)`);
   md.push("");
-  md.push(`- Range: **${rangeStartStr} ~ ${rangeEndStr}** (14일)`);
+  md.push(`- Range: **${rangeStartStr} ~ ${rangeEndStr}** (${periodDays}일)`);
   md.push(`- Users: ${USERS.join(", ")}`);
-  md.push(`- Target per user: **${TARGET_2WEEKS}**`);
+  md.push(`- Target per user: **${TARGET_FOR_PERIOD}**`);
   md.push(`- Dedupe policy: **${DEDUPE_MODE}**`);
   md.push("");
 
@@ -129,7 +108,7 @@ export async function runBiweeklyReport() {
 
   for (const r of reports) {
     md.push(`## ${r.user}`);
-    md.push(`- Total: **${r.total}/${TARGET_2WEEKS} (${r.pct}%)**`);
+    md.push(`- Total: **${r.total}/${TARGET_FOR_PERIOD} (${r.pct}%)**`);
     md.push("");
     md.push(renderDailyTable(r.days));
     md.push("");
@@ -142,16 +121,15 @@ export async function runBiweeklyReport() {
   await fs.writeFile(reportPath, md.join("\n"), "utf8");
   await fs.appendFile(
     "reports/SUMMARY.md",
-    `- ${todayStr}: ${ranked.map((r) => `${r.user} ${r.total}/${TARGET_2WEEKS} (${r.pct}%)`).join(" | ")}  | Team: ${teamTotal}/${teamTarget} (${teamPct}%)\n`,
+    `- ${todayStr}: ${ranked.map((r) => `${r.user} ${r.total}/${TARGET_FOR_PERIOD} (${r.pct}%)`).join(" | ")}  | Team: ${teamTotal}/${teamTarget} (${teamPct}%)\n`,
     "utf8"
   );
 
-  // Discord
   if (DISCORD_WEBHOOK_URL) {
     const content = [
-      `📊 **Algo by Moo&Ryu — 2주 리포트**`,
+      `📊 **Algo by Moo&Ryu — ${PERIOD_DAYS}일 리포트**`,
       `Range: ${rangeStartStr} ~ ${rangeEndStr} (KST)`,
-      `Target per user: ${TARGET_2WEEKS}, Dedupe: ${DEDUPE_MODE}`,
+      `Target per user: ${TARGET_FOR_PERIOD}, Dedupe: ${DEDUPE_MODE}`,
       `🏆 Ranking: ${ranked.map((r, i) => `${i + 1}) ${r.user} ${r.total}`).join("  |  ")}`,
       `Team: ${teamTotal} / ${teamTarget} (${teamPct}%)`,
       ...reports.map((r) => `• ${r.user}: ${r.days.map((d) => `${d.date.slice(5)}:${d.count}`).join(" | ")}`),

@@ -2,7 +2,7 @@
   "name": "algorithm",
   "type": "module",
   "scripts": {
-    "report": "bun scripts/run-biweekly.ts"
+    "report": "bun scripts/run-report.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

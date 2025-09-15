@@ -106,7 +106,7 @@ export async function runReport() {
   md.push(`**Team total: ${teamTotal} / ${teamTarget} (${teamPct}%)**`);
   md.push("");
 
-  for (const r of reports) {
+  for (const r of ranked) {
     md.push(`## ${r.user}`);
     md.push(`- Total: **${r.total}/${TARGET_FOR_PERIOD} (${r.pct}%)**`);
     md.push("");

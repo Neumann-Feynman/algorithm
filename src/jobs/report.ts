@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { fetchRecentAccepted } from "../api/leetcode";
-import { DISCORD_WEBHOOK_URL, TARGET_FOR_PERIOD, TIMEZONE, USERS, DEDUPE_MODE, PERIOD_DAYS } from "../config/env";
+import { DISCORD_WEBHOOK_URL, TARGET_FOR_PERIOD, TIMEZONE, USERS, DEDUPE_MODE, PERIOD_DAYS, RUN_DATE } from "../config/env";
 import { kstRangeLastNDays, toKstDateString } from "../utils/date";
 import { renderBar, renderDailyTable } from "../utils/markdown";
 
@@ -15,12 +15,11 @@ function summarize(days: Daily[]) {
   return { total, pct };
 }
 
-async function buildUserReport(user: string, startTs: number, endTs: number): Promise<UserReport> {
+async function buildUserReport(user: string, startTs: number, endTs: number, startKst: Date): Promise<UserReport> {
   const periodDays = Math.max(1, PERIOD_DAYS);
   const data = await fetchRecentAccepted(20, user);
 
   const perDay = new Map<string, number>();
-  const { startKst } = kstRangeLastNDays(periodDays, TIMEZONE);
   const cur = new Date(startKst);
   for (let i = 0; i < periodDays; i++) {
     const key = cur.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
@@ -73,13 +72,32 @@ async function buildUserReport(user: string, startTs: number, endTs: number): Pr
 export async function runReport() {
   if (USERS.length === 0) throw new Error("No USERS configured (USERS=moo,ryu)");
   const periodDays = Math.max(1, PERIOD_DAYS);
-  const { startKst, endKst } = kstRangeLastNDays(periodDays, TIMEZONE);
+  let endOverride: Date | undefined;
+  if (RUN_DATE) {
+    // Expect RUN_DATE as YYYY-MM-DD in TIMEZONE; set to end of that day in TZ
+    const now = new Date();
+    const nowTz = new Date(now.toLocaleString("en-US", { timeZone: TIMEZONE }));
+    const parts = RUN_DATE.split("-");
+    if (parts.length === 3) {
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      const d = Number(parts[2]);
+      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+        endOverride = new Date(nowTz);
+        endOverride.setFullYear(y);
+        endOverride.setMonth(m - 1);
+        endOverride.setDate(d);
+        endOverride.setHours(23, 59, 59, 999);
+      }
+    }
+  }
+  const { startKst, endKst } = kstRangeLastNDays(periodDays, TIMEZONE, endOverride);
   const startTs = Math.floor(startKst.getTime() / 1000);
   const endTs = Math.floor(endKst.getTime() / 1000);
   const rangeStartStr = startKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
   const rangeEndStr = endKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
 
-  const reports = await Promise.all(USERS.map((u) => buildUserReport(u, startTs, endTs)));
+  const reports = await Promise.all(USERS.map((u) => buildUserReport(u, startTs, endTs, startKst)));
   const ranked = [...reports].sort((a, b) => b.total - a.total);
 
   const teamTotal = reports.reduce((sum, r) => sum + r.total, 0);

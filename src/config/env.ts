@@ -14,3 +14,4 @@ export const PERIOD_DAYS = Number(process.env.PERIOD_DAYS ?? 7);
 
 // Target configuration
 export const TARGET_FOR_PERIOD = Number(process.env.TARGET_FOR_PERIOD ?? 7);
+export const RUN_DATE = process.env.RUN_DATE ?? ""; // YYYY-MM-DD in TZ

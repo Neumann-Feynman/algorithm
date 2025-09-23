@@ -91,7 +91,7 @@ export async function runReport() {
       }
     }
   }
-  const { startKst, endKst } = kstRangeLastNDays(periodDays, TIMEZONE, endOverride);
+  const { startKst, endKst, reportKst } = kstRangeLastNDays(periodDays, TIMEZONE, endOverride);
   const startTs = Math.floor(startKst.getTime() / 1000);
   const endTs = Math.floor(endKst.getTime() / 1000);
   const rangeStartStr = startKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
@@ -104,7 +104,7 @@ export async function runReport() {
   const teamTarget = USERS.length * TARGET_FOR_PERIOD;
   const teamPct = Math.round((teamTotal / teamTarget) * 100);
 
-  const todayStr = endKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
+  const todayStr = reportKst.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
   const reportPath = `reports/${todayStr}.md`;
 
   const md: string[] = [];

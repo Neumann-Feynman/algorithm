@@ -88,7 +88,7 @@ Secrets are stored in GitHub Repository Settings → **Secrets and variables →
 
 - The latest reports are available in the [**reports/**](./reports) directory.
 - Each report file is named `YYYY-MM-DD.md`.
-  - Example: [2025-09-13.md](./reports/2025-09-13.md)
+  - Example: [2025-09-13.md](./reports/2025-09-21.md)
 
 ---
 

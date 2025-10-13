@@ -1,2 +1,3 @@
 - 2025-09-21: moohyeon2 10/7 (143%) | geekseal 2/7 (29%)  | Team: 12/14 (86%)
 - 2025-09-29: moohyeon2 7/7 (100%) | geekseal 2/7 (29%)  | Team: 9/14 (64%)
+- 2025-10-13: geekseal 1/7 (14%) | moohyeon2 0/7 (0%)  | Team: 1/14 (7%)
